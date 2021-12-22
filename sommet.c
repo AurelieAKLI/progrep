@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 
 #define PORT 5555
+#define VAL(str) #str
+#define TOSTRING(str) VAL(str)
 
 void main(){
 
@@ -28,7 +30,8 @@ void main(){
         recv(socketSommet, msg, 1024, 0);
         printf("Message reçu de l'annuaire: %s\n", msg);
 
-        strcpy(msg, "Changement\n");
+        strcpy(msg, TOSTRING(PORT));
+
         send(socketSommet, msg, strlen(msg), 0);
         printf("Fermeture connexion.\n");
 
