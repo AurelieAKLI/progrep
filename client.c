@@ -14,9 +14,13 @@
 
 // Global variables
 volatile sig_atomic_t flag = 0;
-int sock = 0;
+int sockEnvoie = 0;
 char liste[MAX_SOMMETS][MAX_SOMMETS];
 int compteur=0;
+int compteur2;
+struct sockaddr_in adr_Ecoute;
+int sockEcoute;
+char *numSommet;
 
 
 void str_overwrite_stdout() {
@@ -109,6 +113,25 @@ int main(int argc, char **argv){
                 }
         }
         pthread_join(recv_msg_thread, NULL);
+        
+        sockEcoute=socket(AF_INET, SOCK_STREAM, 0);
+
+        adr_Ecoute.sin_family= AF_INET;
+        adr_Ecoute.sin_addr.s_addr= inet_addr(adr_ip);
+
+        pthread_t idEcriture[MAX_SOMMETS];
+        for(int i=0; i<compteur;++i){
+                if(pthread_create(&idEcriture, NULL, (void *) liaison, NULL) != 0){
+                        perror("Problème création thread");
+                        return EXIT_FAILURE;
+                }
+        }
+
+        for(int i=0; i<compteur; ++i){
+                pthread_join(idEcriture, NULL);
+
+        }
+        close(sockEcoute);
         close(sock);
 
         return EXIT_SUCCESS;
