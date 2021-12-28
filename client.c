@@ -17,7 +17,7 @@ volatile sig_atomic_t flag = 0;
 int sockEnvoie = 0;
 char liste[MAX_SOMMETS][MAX_SOMMETS];
 int compteur=0;
-int compteur2;
+int compteur2=0;
 struct sockaddr_in adr_Ecoute;
 int sockEcoute;
 char *numSommet;
@@ -46,6 +46,19 @@ void send_msg_handler() {
         }
         catch_ctrl_c_and_exit(2);
 }*/
+
+void liaison(){
+        adr_Ecoute.sin_port=atoi(liste[compteur2]);
+        compteur2++;
+
+        int err = connect(sockEcoute, (struct sockaddr *)&adr_Ecoute, sizeof(adr_Ecoute));
+        if (err == -1) {
+                perror("Problème connexion");
+                return EXIT_FAILURE;
+        }
+        send(sockfd, buffer, strlen(buffer), 0);
+
+}
 
 void recv_msg_handler() {
         char message[LENGTH] = {};
