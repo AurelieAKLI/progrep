@@ -84,7 +84,7 @@ int main(int argc, char **argv){
                 return EXIT_FAILURE;
         }
         
-        int numSommet=atoi(argv[2]);
+        numSommet=(argv[2]);
 
         char *adr_ip = "127.0.0.1";
         int num_port = atoi(argv[1]);
