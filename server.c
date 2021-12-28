@@ -68,7 +68,7 @@ void send_message(char *s, int uid){
 
 //Fonction lancée à la création du thread du sommet correspondant
 void *handle_client(void *arg){
-        char buffer[BUFFER];
+        //char buffer[BUFFER];
 
         int *i= (int *)arg;
         int a=*i;
@@ -167,14 +167,14 @@ int main(int argc, char **argv){
                 printf("%s\t%d\n",liste[i], liste_uid[i]);
         }
 //séquentielle
-/*
-        for (int i=0; i<nbSommets; ++i){
+
+     
                 for(int j=0; j<nbSommets; ++j){
                         strcat((liste[j]),"_");
-                        send_message(liste[j], sommets[i]->uid);
+                        send_message(liste[j], sommets[j]->uid);
                 }
-        }
-        */
+      
+        /*
         int *i= (int *)malloc(sizeof (int));
         *i=0;
 //parallele
@@ -190,9 +190,9 @@ int main(int argc, char **argv){
                 if(pthread_join(idThread[i], NULL)!=0){
                         perror("Probleme terminaison thread");
                 }
-        }
+        } */
 
-        free(i);
+       // free(i);
 
         close(sock);
         return EXIT_SUCCESS;
