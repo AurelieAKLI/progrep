@@ -17,7 +17,6 @@ volatile sig_atomic_t flag = 0;
 int sock = 0;
 char liste[MAX_SOMMETS][MAX_SOMMETS];
 int compteur=0;
-int numSommet;
 
 
 void str_overwrite_stdout() {
@@ -68,7 +67,7 @@ int main(int argc, char **argv){
                 return EXIT_FAILURE;
         }
         
-        numSommet=atoi(argv[2]);
+        int numSommet=atoi(argv[2]);
 
         char *adr_ip = "127.0.0.1";
         int num_port = atoi(argv[1]);
