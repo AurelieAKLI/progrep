@@ -94,6 +94,10 @@ int main(int argc, char **argv){
                 perror("Problème création thread");
                 return EXIT_FAILURE;
         }
+        //les numéros de ports affichés dans le client doivent être enrigistrés 
+        //Créer un nouveau socket qui va écrire sur les numéros de port qu'on a pu afficher sur le client et qui va se connecter sur les autres
+        // le client reçois des numéros de sommets de ses voisins et compare avec sa valeur 
+        
 
 
         while (1){
