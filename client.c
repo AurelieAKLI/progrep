@@ -20,6 +20,7 @@ int compteur=0;
 int compteur2=0;
 struct sockaddr_in adr_Ecoute;
 int sockEcoute;
+int sock;
 char *numSommet;
 
 
@@ -47,7 +48,7 @@ void send_msg_handler() {
         catch_ctrl_c_and_exit(2);
 }*/
 
-void liaison(){
+void *liaison(){
         adr_Ecoute.sin_port=atoi(liste[compteur2]);
         compteur2++;
 
@@ -56,7 +57,9 @@ void liaison(){
                 perror("Problème connexion");
                 return EXIT_FAILURE;
         }
-        send(sockfd, buffer, strlen(buffer), 0);
+        printf("liaison\n");
+        send(sockEcoute, numSommet, strlen(numSommet), 0);
+        printf("liaison ok\n");
 
 }
 
@@ -83,7 +86,7 @@ int main(int argc, char **argv){
                 printf("Usage: %s <num_port> <numSommet>\n", argv[0]);
                 return EXIT_FAILURE;
         }
-        
+
         numSommet=(argv[2]);
 
         char *adr_ip = "127.0.0.1";
@@ -113,10 +116,10 @@ int main(int argc, char **argv){
                 perror("Problème création thread");
                 return EXIT_FAILURE;
         }
-        //les numéros de ports affichés dans le client doivent être enrigistrés 
+        //les numéros de ports affichés dans le client doivent être enrigistrés
         //Créer un nouveau socket qui va écrire sur les numéros de port qu'on a pu afficher sur le client et qui va se connecter sur les autres
-        // le client reçois des numéros de sommets de ses voisins et compare avec sa valeur 
-        
+        // le client reçois des numéros de sommets de ses voisins et compare avec sa valeur
+
 
 
         while (1){
@@ -126,7 +129,7 @@ int main(int argc, char **argv){
                 }
         }
         pthread_join(recv_msg_thread, NULL);
-        
+
         sockEcoute=socket(AF_INET, SOCK_STREAM, 0);
 
         adr_Ecoute.sin_family= AF_INET;
