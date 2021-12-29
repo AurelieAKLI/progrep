@@ -98,7 +98,8 @@ int main(int argc, char **argv){
 
 
         char *adr_ip = "127.0.0.1";
-        int num_port = 5555;
+        int num_port = 0;
+        //int num_port = 5555;
         int option = 1;
         int sock, sockAccepte ;
         struct sockaddr_in adr_annuaire;
@@ -112,7 +113,8 @@ int main(int argc, char **argv){
         /* parametres socket */
         sock = socket(AF_INET, SOCK_STREAM, 0);
         adr_annuaire.sin_family = AF_INET;
-        adr_annuaire.sin_addr.s_addr = inet_addr(adr_ip);
+        adr_annuaire.sin_addr.s_addr = htonl(INADDR_ANY);
+        //adr_annuaire.sin_addr.s_addr = inet_addr(adr_ip);
         adr_annuaire.sin_port = htons(num_port);
 
         /*if (setsockopt(listener,SOL_SOCKET,SO_REUSEADDR,&tr,sizeof(int)) == -1) {
@@ -120,11 +122,30 @@ int main(int argc, char **argv){
                 exit(1);
         }*/
 
-        if(bind(sock, (struct sockaddr*)&adr_annuaire, sizeof(adr_annuaire)) < 0) {
+        int longueur=sizeof(adr_annuaire);
+
+
+        if(bind(sock, (struct sockaddr*)&adr_annuaire, longueur) < 0) {
                 perror("Problème bind");
                 return EXIT_FAILURE;
         }
 
+        char hbuf[1025];
+        char bbuf[1025];
+        int x=sizeof(struct sockaddr_in);
+
+        //if (getnameinfo((struct sockaddr*)&adr_annuaire, x, hbuf, sizeof(hbuf), bbuf, sizeof (bbuf), 32))  printf("ne trouve pas le numero de port d'un sommet\n");
+        //else  printf("numero de port =%s\n", bbuf);
+        if (getsockname(sock,((struct sockaddr*)&adr_annuaire), &longueur)==-1){
+                perror("pb getsockname");
+                return -1;
+        }
+
+        //printf("Local IP address is: %s\n", inet_ntoa(sa.sin_add r));
+        printf("Local port is: %d\n", (int) ntohs(adr_annuaire.sin_port));
+
+        printf("-> %d",longueur);
+        printf("iciiiiii");
         if (listen(sock, 10) < 0) {
                 perror("Problème listen");
                 return EXIT_FAILURE;
@@ -142,14 +163,14 @@ int main(int argc, char **argv){
                 som->sockfd = sockAccepte;
                 som->uid = uid++;
                 liste_uid[compteur_sommets]=uid;
-
+/*
                 char hbuf[1025];
                 char bbuf[1025];
                 int x=sizeof(struct sockaddr_in);
 
                 if (getnameinfo((struct sockaddr*)&adr_sommet, x, hbuf, sizeof(hbuf), bbuf, sizeof (bbuf), 32))  printf("ne trouve pas le numero de port d'un sommet\n");
                 else  printf("numero de port =%s\n", bbuf);
-
+*/
                 strcpy(liste[compteur_sommets],bbuf);
 
                 /* Add client to the queue and fork thread */
@@ -168,12 +189,12 @@ int main(int argc, char **argv){
         }
 //séquentielle
 
-     
-                for(int j=0; j<nbSommets; ++j){
-                        strcat((liste[j]),"_");
-                        send_message(liste[j], sommets[j]->uid);
-                }
-      
+
+        for(int j=0; j<nbSommets; ++j){
+                strcat((liste[j]),"_");
+                send_message(liste[j], sommets[j]->uid);
+        }
+
         /*
         int *i= (int *)malloc(sizeof (int));
         *i=0;
@@ -192,7 +213,7 @@ int main(int argc, char **argv){
                 }
         } */
 
-       // free(i);
+        // free(i);
 
         close(sock);
         return EXIT_SUCCESS;
