@@ -9,212 +9,152 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <netdb.h>
-
 
 #define MAX_SOMMETS 100
-#define BUFFER 2048
 
 static _Atomic unsigned int compteur_sommets = 0;
-static int uid = 10;
+static int id_s = 10;
 
-/* Client structure */
+/* on stocke les coordonnees du sommet */
 typedef struct{
-    struct sockaddr_in address;
+    struct sockaddr_in addresse;
     int sockfd;
-    int uid;
-    char name[32];
+    int id_s;
 } sommet_t;
 
+sommet_t *sommets[MAX_SOMMETS];
+
+int nbSommets; //nombre de sommets dans le graphe renseigné par l'utilisateur
 char liste[MAX_SOMMETS][MAX_SOMMETS];
 
-sommet_t *sommets[MAX_SOMMETS];
-int nbSommets;
+pthread_mutex_t sommets_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
-/* ajout sommet */
-void queue_add(sommet_t *cl){
-        pthread_mutex_lock(&clients_mutex);
+/* Add sommets to queue */
+void ajout_sommet(sommet_t *som){
+        pthread_mutex_lock(&sommets_mutex);
 
         for(int i=0; i < MAX_SOMMETS; ++i){
                 if(!sommets[i]){
-                        sommets[i] = cl;
+                        sommets[i] = som;
                         break;
                 }
         }
 
-        pthread_mutex_unlock(&clients_mutex);
+        pthread_mutex_unlock(&sommets_mutex);
 }
 
-//envoie message
-void send_message(char *s, int uid){
-        pthread_mutex_lock(&clients_mutex);
+
+/* Send message to all sommets except sender */
+void envoie_message(char *s, int id_s){
+        pthread_mutex_lock(&sommets_mutex);
 
         for(int i=0; i<MAX_SOMMETS; ++i){
                 if(sommets[i]){
-                        if(sommets[i]->uid != uid){
+                        if(sommets[i]->id_s != id_s){
                                 if(write(sommets[i]->sockfd, s, strlen(s)) < 0){
-                                        perror("Errueur descripteur");
+                                        perror("Erreur descripteur");
                                         break;
                                 }
                         }
                 }
         }
 
-        pthread_mutex_unlock(&clients_mutex);
+        pthread_mutex_unlock(&sommets_mutex);
 }
 
-//Fonction lancée à la création du thread du sommet correspondant
-void *handle_client(void *arg){
-        //char buffer[BUFFER];
+/* Handle all communication with the client */
+void *fonction_sommet(void *arg){
+        char port[32];
 
-        int *i= (int *)arg;
-        int a=*i;
-        int x=sommets[a]->uid;
-        printf("a : %d\n", a);
-        //printf("compteur : %d\n", compteur_sommets);
-        //sommet_t *som = (sommet_t *)arg;
-        for(int j=0; j<nbSommets; ++j){
-                printf("uid : %d\n", x);
-                send_message(liste[j], x);
-                sleep(2);
+        sommet_t *som = (sommet_t *)arg;
+        printf("id_s et sockfd dans handle : %d\t%d\n", som->id_s, som->sockfd);
+
+
+
+        if(recv(som->sockfd, port, 32, 0) <= 0){
+                printf("Probleme reception numero de port.\n");
+                compteur_sommets++;
+
+        } else{
+                strcpy(liste[compteur_sommets], port);
+                printf("Numero de port bien reçu %s\n", liste[compteur_sommets]);
+                compteur_sommets++;
+        }
+        int j=0;
+        while(compteur_sommets!=nbSommets){
+        }
+        for (int (i) = 0; (i) <nbSommets ; ++(i)) {
+                envoie_message(liste[i], som->id_s);
         }
 
+
+        /* Delete client from queue and yield thread */
+        close(som->sockfd);
+        free(som);
         pthread_detach(pthread_self());
-        sleep(2);
+
         return NULL;
 }
 
 int main(int argc, char **argv){
         if(argc != 2){
                 printf("Usage: %s <nbSommets>\n", argv[0]);
-                return EXIT_FAILURE;
+                return 1;
         }
 
         nbSommets=atoi(argv[1]);
-        printf("ici déjà\n");
 
-
-        char *adr_ip = "127.0.0.1";
-        int num_port = 0;
-        //int num_port = 5555;
-        int option = 1;
-        int sock, sockAccepte ;
+        char *ip = "127.0.0.1";
+        int port = 5555;
+        int sockEcoute = 0, connexion_acc = 0;
         struct sockaddr_in adr_annuaire;
         struct sockaddr_in adr_sommet;
-        int liste_uid[MAX_SOMMETS];
-        //pthread_t *idThread= (pthread_t *)malloc(nbSommets*sizeof(pthread_t));
-        pthread_t idThread[MAX_SOMMETS];
+        pthread_t id_thread;
 
-        printf("ici &\n");
-
-        /* parametres socket */
-        sock = socket(AF_INET, SOCK_STREAM, 0);
+        /* Socket settings */
+        sockEcoute = socket(AF_INET, SOCK_STREAM, 0);
         adr_annuaire.sin_family = AF_INET;
-        adr_annuaire.sin_addr.s_addr = htonl(INADDR_ANY);
-        //adr_annuaire.sin_addr.s_addr = inet_addr(adr_ip);
-        adr_annuaire.sin_port = htons(num_port);
+        adr_annuaire.sin_addr.s_addr = inet_addr(ip);
+        adr_annuaire.sin_port = htons(port);
 
-        /*if (setsockopt(listener,SOL_SOCKET,SO_REUSEADDR,&tr,sizeof(int)) == -1) {
-                perror("setsockopt");
-                exit(1);
-        }*/
-
-        int longueur=sizeof(adr_annuaire);
+        /* Ignore pipe signals */
+        signal(SIGPIPE, SIG_IGN);
 
 
-        if(bind(sock, (struct sockaddr*)&adr_annuaire, longueur) < 0) {
-                perror("Problème bind");
-                return EXIT_FAILURE;
+        /* Bind */
+        if(bind(sockEcoute, (struct sockaddr*)&adr_annuaire, sizeof(adr_annuaire)) < 0) {
+                perror("ERROR: Socket binding failed");
+                return 2;
         }
 
-        char hbuf[1025];
-        char bbuf[1025];
-        int x=sizeof(struct sockaddr_in);
-
-        //if (getnameinfo((struct sockaddr*)&adr_annuaire, x, hbuf, sizeof(hbuf), bbuf, sizeof (bbuf), 32))  printf("ne trouve pas le numero de port d'un sommet\n");
-        //else  printf("numero de port =%s\n", bbuf);
-        if (getsockname(sock,((struct sockaddr*)&adr_annuaire), &longueur)==-1){
-                perror("pb getsockname");
-                return -1;
-        }
-
-        //printf("Local IP address is: %s\n", inet_ntoa(sa.sin_add r));
-        printf("Local port is: %d\n", (int) ntohs(adr_annuaire.sin_port));
-
-        printf("-> %d",longueur);
-        printf("iciiiiii");
-        if (listen(sock, 10) < 0) {
-                perror("Problème listen");
-                return EXIT_FAILURE;
+        /* Listen */
+        if (listen(sockEcoute, 10) < 0) {
+                perror("ERROR: Socket listening failed");
+                return 3;
         }
 
 
-        while(compteur_sommets!=nbSommets){
-                socklen_t clilen = sizeof(adr_sommet);
-                sockAccepte = accept(sock, (struct sockaddr*)&adr_sommet, &clilen);
+        while(nbSommets!=compteur_sommets){
+                socklen_t lgr_som = sizeof(adr_sommet);
+                connexion_acc = accept(sockEcoute, (struct sockaddr*)&adr_sommet, &lgr_som);
+
+                /* Check if max sommets is reached */
 
 
                 /* Client settings */
                 sommet_t *som = (sommet_t *)malloc(sizeof(sommet_t));
-                som->address = adr_sommet;
-                som->sockfd = sockAccepte;
-                som->uid = uid++;
-                liste_uid[compteur_sommets]=uid;
-/*
-                char hbuf[1025];
-                char bbuf[1025];
-                int x=sizeof(struct sockaddr_in);
-
-                if (getnameinfo((struct sockaddr*)&adr_sommet, x, hbuf, sizeof(hbuf), bbuf, sizeof (bbuf), 32))  printf("ne trouve pas le numero de port d'un sommet\n");
-                else  printf("numero de port =%s\n", bbuf);
-*/
-                strcpy(liste[compteur_sommets],bbuf);
+                som->addresse = adr_sommet;
+                som->sockfd = connexion_acc;
+                som->id_s = id_s++;
+                printf("id_s avant pthread_create : %d\n", id_s);
 
                 /* Add client to the queue and fork thread */
-                queue_add(som);
-                compteur_sommets++;
-                //pthread_create(&idThread, NULL, &handle_client, (void*)som);
+                ajout_sommet(som);
+                pthread_create(&id_thread, NULL, &fonction_sommet, (void*)som);
 
                 /* Reduce CPU usage */
                 sleep(1);
-
-
         }
 
-        for (int i=0; i<nbSommets;++i){
-                printf("%s\t%d\n",liste[i], liste_uid[i]);
-        }
-//séquentielle
-
-
-        for(int j=0; j<nbSommets; ++j){
-                strcat((liste[j]),"_");
-                send_message(liste[j], sommets[j]->uid);
-        }
-
-        /*
-        int *i= (int *)malloc(sizeof (int));
-        *i=0;
-//parallele
-        for ( int j=0; j<nbSommets; ++j){
-                printf("cc : %d\n", *i);
-                pthread_create(&idThread[j], NULL, *handle_client, (void *)i);
-                //pthread_create(&idThread, NULL, &handle_client, (void*)som);
-                *i=*i+1;
-                sleep(2);
-        }
-
-        for(int i=0; i<nbSommets; ++i){
-                if(pthread_join(idThread[i], NULL)!=0){
-                        perror("Probleme terminaison thread");
-                }
-        } */
-
-        // free(i);
-
-        close(sock);
-        return EXIT_SUCCESS;
+        return 0;
 }
